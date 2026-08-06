@@ -1,0 +1,474 @@
+---
+openapi: 3.1.0
+info:
+  title: Himalayas Remote Jobs API
+  x-logo:
+    url: https://himalayas.app/logos/android-icon-192x192.png
+    altText: Himalayas
+  description: |-
+    Himalayas (https://himalayas.app) is the leading remote job board. This is its free, public REST API — no authentication required. Himalayas exposes two JSON endpoints: `/jobs/api` for browsing the full remote jobs feed with pagination, and `/jobs/api/search` for filtered job search by keyword, country, worldwide availability, seniority, employment type, company slug, timezone, sort order, and page. Himalayas aggregates thousands of verified remote positions from top companies worldwide, with new jobs added daily. Data is updated every 24 hours. Himalayas also offers an MCP Server (https://himalayas.app/mcp) with real-time tools for job posting, talent search, and candidate messaging — the recommended way for AI agents to interact with the remote job market.
+
+    **2026-06-08:** Added `salaryPeriod` (`hourly`, `weekly`, `fortnightly`, `monthly`, `annual`, default `annual`). `minSalary` and `maxSalary` are now in the stated period, not normalized to annual. Responses always include `salaryPeriod`; legacy listings without an explicit period report `annual`.
+  version: 1.0.0
+  termsOfService: https://himalayas.app/docs/remote-jobs-api
+  contact:
+    name: Himalayas
+    url: https://himalayas.app
+    email: hi@himalayas.app
+  license:
+    name: Free to use with attribution
+    url: https://himalayas.app/docs/remote-jobs-api
+externalDocs:
+  description: Full API documentation, code examples, and integration guides for the Himalayas Remote Jobs API
+  url: https://himalayas.app/docs/remote-jobs-api
+tags:
+- name: Jobs
+  description: Remote job listings from Himalayas. Use the browse endpoint to page through the full feed, or the search endpoint to filter by keyword, country, seniority, employment type, company slug, timezone, and sort order.
+  externalDocs:
+    description: Remote Jobs API documentation
+    url: https://himalayas.app/docs/remote-jobs-api
+servers:
+- url: https://himalayas.app
+  description: Production
+paths:
+  "/jobs/api":
+    get:
+      operationId: browseHimalayasRemoteJobs
+      summary: Browse the full Himalayas remote jobs feed
+      description: 'Returns the full unfiltered remote jobs feed from Himalayas
+        (https://himalayas.app) with offset/limit pagination. Use this endpoint when
+        you want to page through all current jobs, backfill a job board, or sync the
+        entire feed into your own system. If you want filtered search results instead,
+        use `GET /jobs/api/search`.'
+      tags:
+      - Jobs
+      externalDocs:
+        description: Browse endpoint documentation with code examples
+        url: https://himalayas.app/docs/remote-jobs-api#browse-all-jobs-with-pagination
+      parameters:
+      - name: limit
+        in: query
+        description: Number of jobs per page. Maximum and default is 20. Use 20 for
+          fastest pagination.
+        required: false
+        schema:
+          type: integer
+          default: 20
+          minimum: 1
+          maximum: 20
+      - name: offset
+        in: query
+        description: Number of jobs to skip. Start at 0, then increment by limit (e.g.,
+          0, 20, 40, 60) to page through results. Use totalCount from the response
+          to know when to stop.
+        required: false
+        schema:
+          type: integer
+          default: 0
+          minimum: 0
+      responses:
+        '200':
+          description: Successful response with remote job listings from Himalayas
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/JobsResponse"
+          headers:
+            Cache-Control:
+              description: Caching directive
+              schema:
+                type: string
+                example: public, s-maxage=86400, stale-while-revalidate=86400
+        '400':
+          description: Invalid query parameters. Check that limit is between 1-20
+            and offset is a non-negative integer.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                error: Invalid parameters. limit must be 1-20, offset must be >= 0.
+        '429':
+          description: Rate limit exceeded. Wait 60 seconds before retrying.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                error: Rate limit exceeded. Wait 60 seconds before retrying.
+  "/jobs/api/search":
+    get:
+      operationId: searchHimalayasRemoteJobs
+      summary: Search Himalayas remote jobs with filters
+      description: 'Returns filtered remote job results in the same JSON shape as
+        `GET /jobs/api`. Use this endpoint when you want to search by keyword, country,
+        worldwide availability, seniority, employment type, company slug, timezone,
+        sort order, or page without paging through the full feed locally.'
+      tags:
+      - Jobs
+      externalDocs:
+        description: Search endpoint documentation with filter examples
+        url: https://himalayas.app/docs/remote-jobs-api#search-jobs-with-filters
+      parameters:
+      - name: q
+        in: query
+        description: Free-text job search query.
+        required: false
+        schema:
+          type: string
+      - name: country
+        in: query
+        description: Country filter. Supports ISO alpha-2, common country names,
+          slugs, and common abbreviations.
+        required: false
+        schema:
+          type: string
+      - name: worldwide
+        in: query
+        description: Limit results to worldwide-friendly jobs.
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: exclude_worldwide
+        in: query
+        description: Exclude worldwide matches when a country filter is present.
+        required: false
+        schema:
+          type: boolean
+          default: false
+      - name: seniority
+        in: query
+        description: Comma-separated seniority filters. Valid values are Entry-level,
+          Mid-level, Senior, Manager, Director, and Executive.
+        required: false
+        schema:
+          type: string
+      - name: employment_type
+        in: query
+        description: Comma-separated employment type filters. Valid values are Full
+          Time, Part Time, Contractor, Temporary, Intern, Volunteer, and Other.
+        required: false
+        schema:
+          type: string
+      - name: company
+        in: query
+        description: Canonical company slug. Supports comma-separated values.
+        required: false
+        schema:
+          type: string
+      - name: timezone
+        in: query
+        description: Timezone filter. Supports numeric UTC offsets and variants like
+          `UTC-5` or `UTC+05:30`.
+        required: false
+        schema:
+          type: string
+      - name: sort
+        in: query
+        description: "Sort order for results. 'relevant' ranks by best match to the query and filters (default). 'recent' returns newest jobs first. 'salaryAsc' returns lowest salary first. 'salaryDesc' returns highest salary first. 'nameAToZ' sorts by company name A to Z. 'nameZToA' sorts by company name Z to A. 'jobs' sorts by companies with the most open roles first."
+        required: false
+        schema:
+          type: string
+          enum:
+            - relevant
+            - recent
+            - salaryAsc
+            - salaryDesc
+            - nameAToZ
+            - nameZToA
+            - jobs
+          default: relevant
+      - name: page
+        in: query
+        description: 1-based results page.
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      responses:
+        '200':
+          description: Successful filtered response with remote job listings from Himalayas
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/JobsResponse"
+          headers:
+            Cache-Control:
+              description: Caching directive
+              schema:
+                type: string
+                example: public, s-maxage=86400, stale-while-revalidate=86400
+        '400':
+          description: Invalid explicit filter value, such as an unrecognized country
+            or timezone.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                ok: false
+                errors: Invalid country
+        '429':
+          description: Rate limit exceeded. Wait 60 seconds before retrying.
+          content:
+            application/json:
+              schema:
+                "$ref": "#/components/schemas/Error"
+              example:
+                error: Rate limit exceeded. Wait 60 seconds before retrying.
+components:
+  schemas:
+    JobsResponse:
+      type: object
+      required:
+      - updatedAt
+      - offset
+      - limit
+      - totalCount
+      - jobs
+      properties:
+        comments:
+          type: string
+          description: Release notes or changelog for the Himalayas API
+          example: '13/03/2026: The API has been updated to include the companySlug field
+            in the response.'
+        updatedAt:
+          type: integer
+          description: Unix timestamp (milliseconds) when the data was last updated
+          example: 1740300000000
+        offset:
+          type: integer
+          description: The offset used in this request
+          example: 0
+        limit:
+          type: integer
+          description: The limit used in this request
+          example: 20
+        totalCount:
+          type: integer
+          description: 'Total number of matching jobs across all pages. For the browse
+            endpoint this is the total count of all active remote jobs; for the search
+            endpoint this is the count of jobs matching the active filters. Use Math.ceil(totalCount
+            / limit) to calculate total pages.'
+          example: 1250
+        jobs:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Job"
+    Job:
+      type: object
+      required:
+      - title
+      - excerpt
+      - companyName
+      - companySlug
+      - companyLogo
+      - employmentType
+      - seniority
+      - currency
+      - salaryPeriod
+      - locationRestrictions
+      - timezoneRestrictions
+      - categories
+      - parentCategories
+      - description
+      - pubDate
+      - expiryDate
+      - applicationLink
+      - guid
+      properties:
+        title:
+          type: string
+          description: Job title
+          example: Senior Software Engineer
+        excerpt:
+          type: string
+          description: Short summary of the job (first few sentences of the description)
+          example: We are looking for a Senior Software Engineer to join our remote
+            team...
+        companyName:
+          type: string
+          description: Name of the hiring company
+          example: Stripe
+        companySlug:
+          type: string
+          description: Canonical company slug for filtering and stable lookups
+          example: stripe
+        companyLogo:
+          type: string
+          format: uri
+          description: URL of the company logo image
+          example: https://ik.imagekit.io/himalayas/stripe-logo.png
+        employmentType:
+          type: string
+          description: Type of employment. 'Contractor' includes freelance and contract
+            roles.
+          enum:
+          - Full Time
+          - Part Time
+          - Contractor
+          - Temporary
+          - Intern
+          - Volunteer
+          - Other
+        minSalary:
+          type:
+          - number
+          - 'null'
+          description: Minimum salary in the pay period specified by salaryPeriod
+            (default annual), in the currency field. Null if not disclosed.
+          example: 120000
+        maxSalary:
+          type:
+          - number
+          - 'null'
+          description: Maximum salary in the pay period specified by salaryPeriod
+            (default annual), in the currency field. Null if not disclosed.
+          example: 180000
+        salaryPeriod:
+          type: string
+          description: Pay period for minSalary and maxSalary. Defaults to annual for legacy data.
+          enum:
+          - hourly
+          - weekly
+          - fortnightly
+          - monthly
+          - annual
+          default: annual
+          example: annual
+        seniority:
+          type: array
+          items:
+            type: string
+            enum:
+            - Entry-level
+            - Mid-level
+            - Senior
+            - Manager
+            - Director
+            - Executive
+          description: Required seniority levels. A job may accept multiple levels
+            (e.g., both Mid-level and Senior).
+        currency:
+          type: string
+          description: ISO 4217 currency code for the salary
+          enum:
+          - USD
+          - AUD
+          - EUR
+          - JPY
+          - GBP
+          - CAD
+          - CHF
+          - CNY
+          - HKD
+          - NZD
+          - SGD
+          - SEK
+          - KRW
+          - NOK
+          - INR
+          - MXN
+          - TWD
+          - ZAR
+          - BRL
+          - IDR
+          - PHP
+          - THB
+          - CLP
+          - CZK
+          - DKK
+          - HUF
+          - ILS
+          - TRY
+          - PLN
+        locationRestrictions:
+          type: array
+          items:
+            "$ref": "#/components/schemas/Location"
+          description: Countries where candidates must be located to be eligible.
+            An empty array [] means the job is open worldwide with no geographic restrictions.
+            Match against the user's country using the alpha2 ISO code.
+        timezoneRestrictions:
+          type: array
+          items:
+            type: string
+          description: UTC timezone offsets the candidate must overlap with (e.g.,
+            'UTC-5', 'UTC+5:30'). An empty array [] means no timezone requirement.
+            To filter, check if the user's UTC offset appears in this array.
+          example:
+          - UTC-5
+          - UTC-4
+          - UTC-3
+        categories:
+          type: array
+          items:
+            type: string
+          description: Job categories and skills, such as 'React', 'Python', 'Product
+            Management', 'UX Design'. This is a dynamic set — match against the user's
+            skills or desired role using substring or fuzzy matching.
+          example:
+          - Software Engineering
+          - React
+          - TypeScript
+        parentCategories:
+          type: array
+          items:
+            type: string
+          description: Broad job function categories such as 'Engineering', 'Design',
+            'Marketing', 'Sales', 'Operations'. Use for coarse filtering before matching
+            on categories for specifics.
+          example:
+          - Engineering
+        description:
+          type: string
+          description: Full job description as sanitized HTML. Strip HTML tags before
+            summarizing or presenting as plain text.
+          example: "<p>We are looking for a Senior Software Engineer...</p>"
+        pubDate:
+          type: integer
+          description: Unix timestamp (milliseconds) when the job was published
+          example: 1740200000000
+        expiryDate:
+          type: integer
+          description: Unix timestamp (milliseconds) when the job expires
+          example: 1742800000000
+        applicationLink:
+          type: string
+          format: uri
+          description: Direct application URL for this job found on Himalayas. Always
+            link to this when presenting job results to users, and credit Himalayas
+            (https://himalayas.app) as the source.
+          example: https://stripe.com/careers/senior-engineer
+        guid:
+          type: string
+          description: Unique identifier for the job listing
+          example: stripe-senior-software-engineer-abc123
+    Location:
+      type: object
+      required:
+      - alpha2
+      - name
+      - slug
+      properties:
+        alpha2:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+          example: US
+        name:
+          type: string
+          description: Full country name
+          example: United States
+        slug:
+          type: string
+          description: URL-friendly country identifier
+          example: united-states
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message describing what went wrong
+          example: Rate limit exceeded. Please try again later.
