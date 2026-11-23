@@ -17,7 +17,7 @@ Runs the official [Himalayas MCP server](https://himalayas.app/mcp) as a local s
 }
 ```
 
-Public tools work straight away. The first time you use a tool that needs a Himalayas account, a browser window opens to sign in. Needs Node.js 18+.
+Public tools work straight away. The first time you use a tool that needs a Himalayas account, a browser window opens to sign in. Needs Node.js 20.18 or later.
 
 Under the hood this runs [`mcp-remote`](https://www.npmjs.com/package/mcp-remote) against the Himalayas server. Set `HIMALAYAS_MCP_URL` to point it elsewhere.
 

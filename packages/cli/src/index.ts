@@ -20,7 +20,7 @@ Search options
   -s, --seniority <list>     Entry-level, Mid-level, Senior, Manager, Director, Executive
   -t, --type <list>          Full Time, Part Time, Contractor, Temporary, Intern, Volunteer
       --company <slug>       One company's jobs
-      --timezone <offset>    e.g. UTC-5 or +5:30
+      --timezone <offset>    e.g. UTC-5 or UTC+5:30
       --sort <order>         relevant (default), recent, salaryDesc, salaryAsc
   -p, --page <n>             Results page (default 1)
   -n, --limit <n>            Show at most n jobs (default 10)

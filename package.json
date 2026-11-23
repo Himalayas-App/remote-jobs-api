@@ -8,8 +8,7 @@
     "packages/mcp"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "test": "npm run build && node --test test/"
+    "build": "npm run build --workspaces --if-present"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

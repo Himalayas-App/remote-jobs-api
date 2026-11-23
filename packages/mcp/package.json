@@ -12,8 +12,8 @@
   "type": "module",
   "bin": { "himalayas-mcp": "dist/index.js" },
   "files": ["dist", "README.md", "LICENSE"],
-  "engines": { "node": ">=18" },
-  "scripts": { "build": "tsc -p tsconfig.json && chmod +x dist/index.js" },
+  "engines": { "node": ">=20.18.1" },
+  "scripts": { "build": "tsc -p tsconfig.json && chmod +x dist/index.js", "prepack": "npm run build" },
   "dependencies": { "mcp-remote": "^0.16.6" },
   "publishConfig": { "access": "public" }
 }
