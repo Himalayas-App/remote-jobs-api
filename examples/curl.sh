@@ -34,6 +34,7 @@ api() {
       printf '%s\n' "${response%$'\n'*}"
       return 0
     fi
+    [ "$attempt" = 3 ] && break
     wait=$(awk 'tolower($1) == "retry-after:" { print $2 + 0 }' "$HEADERS")
     echo "Rate limited; retrying in ${wait:-60}s" >&2
     sleep "${wait:-60}"

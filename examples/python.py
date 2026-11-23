@@ -13,6 +13,7 @@ Uses only `requests`.
 
 import os
 import time
+from typing import Optional
 
 import requests
 
@@ -36,7 +37,7 @@ def request(path: str, params: dict) -> dict:
         return response.json()
 
 
-def browse_jobs(limit: int = 20, cursor: str | None = None) -> dict:
+def browse_jobs(limit: int = 20, cursor: Optional[str] = None) -> dict:
     """Fetch a page of the full remote jobs feed. `limit` is capped at 20.
 
     Pass the previous response's `nextCursor` as `cursor` to get the next page.
