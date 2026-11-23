@@ -1,0 +1,19 @@
+{
+  "name": "@himalayas/mcp",
+  "version": "0.1.0",
+  "description": "Run the official Himalayas MCP server (remote jobs, salaries, companies) as a local stdio server for AI apps that only support local servers",
+  "keywords": ["himalayas", "mcp", "model context protocol", "remote jobs", "ai agents"],
+  "homepage": "https://himalayas.app/docs/remote-jobs-mcp",
+  "repository": { "type": "git", "url": "git+https://github.com/Himalayas-App/remote-jobs-api.git", "directory": "packages/mcp" },
+  "bugs": "https://github.com/Himalayas-App/remote-jobs-api/issues",
+  "license": "MIT",
+  "author": "Himalayas (https://himalayas.app)",
+  "mcpName": "app.himalayas/mcp",
+  "type": "module",
+  "bin": { "himalayas-mcp": "dist/index.js" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "scripts": { "build": "tsc -p tsconfig.json && chmod +x dist/index.js" },
+  "dependencies": { "mcp-remote": "^0.16.6" },
+  "publishConfig": { "access": "public" }
+}

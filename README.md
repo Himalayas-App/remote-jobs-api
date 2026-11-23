@@ -20,6 +20,7 @@ curl 'https://himalayas.app/jobs/api/search?q=react%20engineer&country=US&sort=r
 - **Docs:** https://himalayas.app/docs/remote-jobs-api
 - **OpenAPI 3.1 spec:** [`openapi.json`](openapi.json) · [`openapi.yaml`](openapi.yaml) · [hosted](https://himalayas.app/docs/openapi.json)
 - **Code examples:** [`examples/`](examples) — curl, Python, Node.js, TypeScript, PHP, Go, Ruby
+- **npm packages:** [`@himalayas/api`](packages/api) (typed client), [`@himalayas/cli`](packages/cli) (`himalayas search` in your terminal), [`@himalayas/mcp`](packages/mcp) (MCP server for local-only AI apps)
 - **RSS feed:** https://github.com/Himalayas-App/remote-jobs-rss-feed
 - **MCP server:** https://github.com/Himalayas-App/himalayas-mcp
 
@@ -37,6 +38,7 @@ curl 'https://himalayas.app/jobs/api/search?q=react%20engineer&country=US&sort=r
 - [Rate limits and caching](#rate-limits-and-caching)
 - [CORS: call this from your server, not the browser](#cors-call-this-from-your-server-not-the-browser)
 - [Errors](#errors)
+- [npm packages](#npm-packages)
 - [OpenAPI and generated clients](#openapi-and-generated-clients)
 - [Other ways to access the data](#other-ways-to-access-the-data)
 - [Attribution and terms of use](#attribution-and-terms-of-use)
@@ -310,6 +312,31 @@ If you just want live job listings on a web page with no backend, use the [embed
 | `200` | Success | — |
 | `400` | Bad Request — invalid query parameter | Check parameter names, enum values, and types |
 | `429` | Too Many Requests — rate limit exceeded | Back off and retry later; the data refreshes daily |
+
+---
+
+## npm packages
+
+Official packages, in [`packages/`](packages):
+
+| Package | What it is |
+| --- | --- |
+| [`@himalayas/api`](packages/api) | Typed TypeScript client with no dependencies: `search`, `browse`, `browseAll` (follows the cursor for you) and `getJob` (open, closed or not found) |
+| [`@himalayas/cli`](packages/cli) | The `himalayas` command: search remote jobs from your terminal, check a job is still open, and print MCP setup for your AI app |
+| [`@himalayas/mcp`](packages/mcp) | The Himalayas MCP server as a local stdio server, for AI apps that can't connect to remote servers |
+
+```bash
+npm install @himalayas/api
+npx @himalayas/cli search react --country BR
+```
+
+```ts
+import { Himalayas } from '@himalayas/api';
+
+const { jobs } = await new Himalayas().search({ q: 'React', country: 'BR' });
+```
+
+To build them from this repo: `npm install && npm run build`.
 
 ---
 
