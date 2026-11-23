@@ -1,36 +1,36 @@
-# Remote Jobs API — free public JSON API for remote job listings
+# Remote Jobs API
 
-[![Jobs available](https://img.shields.io/badge/jobs-95%2C000%2B-2563eb)](https://himalayas.app/jobs)
-[![Auth](https://img.shields.io/badge/auth-none%20required-16a34a)](https://himalayas.app/api)
+[![Jobs available](https://img.shields.io/badge/jobs-over%20100%2C000-2563eb)](https://himalayas.app/jobs)
+[![Auth](https://img.shields.io/badge/auth-optional%20free%20key-16a34a)](https://himalayas.app/api)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.1-6b21a8)](https://himalayas.app/docs/openapi.json)
-[![MCP server](https://img.shields.io/badge/MCP-server-f97316)](https://himalayas.app/mcp)
 
-The **Himalayas Remote Jobs API** is a free, public, no-auth JSON API for remote and work-from-home job listings. Use it to backfill a remote job board, power a job search product, populate a dashboard, or feed AI agents and automation workflows.
+The **Himalayas Remote Jobs API** is a free public JSON API for remote job listings. Use it to backfill a remote job board, power a website or app, build a bot, or feed an AI agent.
 
-No API key. No sign-up. No OAuth. Just `curl`.
-
-```bash
-curl 'https://himalayas.app/jobs/api?limit=20&offset=0'
-```
+**Free, no key needed, JSON, 20 jobs per page, commercial use allowed under the [API terms](https://himalayas.app/terms#api).** An optional free API key gives you higher rate limits and usage tracking.
 
 ```bash
-curl 'https://himalayas.app/jobs/api/search?q=react%20engineer&country=US&sort=recent'
+# Quick test without a key
+curl 'https://himalayas.app/jobs/api?limit=20'
+
+# With a free API key stored in HIMALAYAS_API_KEY
+curl -H "Authorization: Bearer $HIMALAYAS_API_KEY" \
+  'https://himalayas.app/jobs/api?limit=20'
 ```
+
+We recommend a [free API key](https://himalayas.app/signup/developer) for anything beyond a quick test. Keyed requests get 60 requests per minute and 10,000 per UTC day, plus a daily usage count.
 
 - **Docs:** https://himalayas.app/docs/remote-jobs-api
-- **OpenAPI 3.1 spec:** [`openapi.json`](openapi.json) · [`openapi.yaml`](openapi.yaml) · [hosted](https://himalayas.app/docs/openapi.json)
-- **Code examples:** [`examples/`](examples) — curl, Python, Node.js, TypeScript, PHP, Go, Ruby
-- **npm packages:** [`@himalayas/api`](packages/api) (typed client), [`@himalayas/cli`](packages/cli) (`himalayas search` in your terminal), [`@himalayas/mcp`](packages/mcp) (MCP server for local-only AI apps)
-- **RSS feed:** https://github.com/Himalayas-App/remote-jobs-rss-feed
-- **MCP server:** https://github.com/Himalayas-App/himalayas-mcp
-
----
+- **OpenAPI 3.1 spec:** [`openapi.json`](openapi.json), [`openapi.yaml`](openapi.yaml), [hosted](https://himalayas.app/docs/openapi.json)
+- **Code examples:** [`examples/`](examples): curl, Python, Node.js, TypeScript, PHP, Go, Ruby
 
 ## Contents
 
+- [npm packages](#npm-packages)
 - [Endpoints](#endpoints)
 - [Browse all remote jobs](#browse-all-remote-jobs)
 - [Search remote jobs](#search-remote-jobs)
+- [Filter by where candidates can live](#filter-by-where-candidates-can-live)
+- [Check whether a job is still open](#check-whether-a-job-is-still-open)
 - [Response schema](#response-schema)
 - [Example response](#example-response)
 - [Code examples](#code-examples)
@@ -38,13 +38,41 @@ curl 'https://himalayas.app/jobs/api/search?q=react%20engineer&country=US&sort=r
 - [Rate limits and caching](#rate-limits-and-caching)
 - [CORS: call this from your server, not the browser](#cors-call-this-from-your-server-not-the-browser)
 - [Errors](#errors)
-- [npm packages](#npm-packages)
 - [OpenAPI and generated clients](#openapi-and-generated-clients)
 - [Other ways to access the data](#other-ways-to-access-the-data)
 - [Attribution and terms of use](#attribution-and-terms-of-use)
 - [FAQ](#faq)
+- [Support](#support)
 
----
+## npm packages
+
+Official packages, in [`packages/`](packages):
+
+| Package | What it is |
+| --- | --- |
+| [`@himalayas/api`](packages/api) | Typed TypeScript client with no dependencies: `search`, `browse`, `browseAll` (follows `nextCursor`) and `getJob` (open, closed or not found) |
+| [`@himalayas/cli`](packages/cli) | Search jobs, check a listing, and print AI app setup instructions |
+| [`@himalayas/mcp`](packages/mcp) | A stdio bridge to the hosted MCP server; see [MCP setup](#is-there-an-mcp-server) |
+
+MCP means Model Context Protocol, how AI apps such as Claude and ChatGPT call tools. With stdio, an AI app starts a local process; the bridge still connects to the hosted server.
+
+```bash
+npm install @himalayas/api
+npx @himalayas/cli search react --country BR
+```
+
+```ts
+import { Himalayas } from '@himalayas/api';
+
+const client = new Himalayas({ apiKey: process.env.HIMALAYAS_API_KEY });
+const { jobs } = await client.search({ q: 'React', country: 'BR' });
+```
+
+The client doesn't read `HIMALAYAS_API_KEY` itself; pass it as `apiKey`, as above.
+
+The client methods, including `browseAll`, throw `HimalayasError` with `status` and `retryAfter` on errors such as `429`. They don't retry automatically. If `browseAll` throws, its generator ends; restarting it starts the feed again. For a resumable sync, call `browse({ cursor })` yourself, save the cursor, and retry the failed page after waiting.
+
+The CLI reads `HIMALAYAS_API_KEY`. Use `--country-only` to exclude worldwide matches, `himalayas job <url>` to check a listing, or `himalayas mcp [client]` for setup.
 
 ## Endpoints
 
@@ -52,12 +80,11 @@ Base URL: `https://himalayas.app`
 
 | Endpoint | Purpose |
 | --- | --- |
-| `GET /jobs/api` | Browse the full remote jobs feed with `offset`/`limit` pagination |
-| `GET /jobs/api/search` | Filtered search by keyword, country, seniority, employment type, company, timezone |
+| `GET /jobs/api` | Browse the full feed with `cursor`/`limit` pagination |
+| `GET /jobs/api/search` | Filter by keyword, country, seniority, employment type, company, timezone |
+| `GET /jobs/api/companies/{company}/jobs/{slug}` | Check an individual job's status |
 
-Both endpoints return the same JSON job object, so you can switch between them without changing your parsing code.
-
----
+Browse and search return the same JSON job object. The single-job endpoint returns `{ job }` when the job is open.
 
 ## Browse all remote jobs
 
@@ -65,20 +92,25 @@ Both endpoints return the same JSON job object, so you can switch between them w
 GET https://himalayas.app/jobs/api
 ```
 
-Use this when you want the whole feed and plan to page through it.
+Use this when you want the whole feed.
 
 | Parameter | Type | Default | Notes |
 | --- | --- | --- | --- |
 | `limit` | integer | `20` | Jobs per request. **Maximum is 20.** |
-| `offset` | integer | `0` | Jobs to skip. Increment by `limit` to paginate. |
+| `cursor` | string | Omitted | Pass back `nextCursor` from the previous response |
+| `offset` | integer | `0` | Deprecated. Still supported, but will be removed in a future release |
 
 ```bash
-curl 'https://himalayas.app/jobs/api?limit=20&offset=40'
+# First page
+curl 'https://himalayas.app/jobs/api?limit=20'
+
+# Next page: set NEXT_CURSOR to the returned nextCursor value
+curl --get 'https://himalayas.app/jobs/api' \
+  --data-urlencode 'limit=20' \
+  --data-urlencode "cursor=$NEXT_CURSOR"
 ```
 
-The response includes `totalCount`, so you know when to stop paging.
-
----
+Stop when the response has no `nextCursor`. Do not build or parse cursor values yourself. `totalCount` is an estimate, not a stopping condition.
 
 ## Search remote jobs
 
@@ -91,17 +123,17 @@ Use this when you want filtered results without crawling the full feed locally.
 | Parameter | Type | Example | Notes |
 | --- | --- | --- | --- |
 | `q` | string | `react engineer` | Free-text query |
-| `country` | string | `US`, `united-states`, `United States` | ISO alpha-2, country name, slug, or abbreviation |
+| `country` | string | `US`, `united-states`, `United States` | One country: ISO alpha-2, name or slug |
 | `worldwide` | boolean | `true` | Limit to worldwide-friendly jobs |
 | `exclude_worldwide` | boolean | `true` | Exclude worldwide matches when filtering by country |
 | `seniority` | string | `Senior`, `Mid-level,Senior` | `Entry-level`, `Mid-level`, `Senior`, `Manager`, `Director`, `Executive` |
 | `employment_type` | string | `Full Time` | `Full Time`, `Part Time`, `Contractor`, `Temporary`, `Intern`, `Volunteer`, `Other` |
-| `company` | string | `linear`, `linear,vercel` | Canonical company slugs — use `companySlug` from a response |
+| `company` | string | `linear`, `linear,vercel` | Canonical company slugs; use `companySlug` from a response |
 | `timezone` | string | `-5`, `UTC-5`, `UTC+05:30` | Timezone restriction filter |
 | `sort` | enum | `recent` | `relevant` (default), `recent`, `salaryAsc`, `salaryDesc`, `nameAToZ`, `nameZToA`, `jobs` |
 | `page` | integer | `2` | 1-based page number |
 
-Comma-separate values to pass more than one `seniority`, `employment_type`, or `company`.
+Comma-separate values for multiple `seniority`, `employment_type`, or `company` values. For multiple countries, search once per country; `country=BR,AR` returns `400`.
 
 ```bash
 # Keyword search
@@ -117,23 +149,56 @@ curl 'https://himalayas.app/jobs/api/search?company=linear&employment_type=Full%
 curl 'https://himalayas.app/jobs/api/search?q=python&sort=salaryDesc&page=2'
 ```
 
+Keep requesting the next `page` until one returns no jobs. Pages can hold fewer jobs than the limit before the end of the results. Deduplicate on `guid` because results can shift between pages. `totalCount` is an estimate that can be up to a day old and can run slightly high.
+
 ### Filtering by company
 
-Always filter with the `companySlug` value returned in a response, passed back as the `company` parameter. It is the canonical identifier and is far more reliable than guessing a slug from `companyName`.
+Pass the response's `companySlug` back as the `company` parameter. It is the canonical identifier; don't guess it from `companyName`.
 
----
+## Filter by where candidates can live
+
+Use `country` to find jobs available to someone living in that country. Results include worldwide jobs unless you add `exclude_worldwide=true`.
+
+```bash
+# Candidates in Brazil, including worldwide jobs
+curl 'https://himalayas.app/jobs/api/search?country=BR'
+
+# Exclude worldwide matches
+curl 'https://himalayas.app/jobs/api/search?country=BR&exclude_worldwide=true'
+```
+
+`locationRestrictions` contains country names, such as `["Brazil"]`; an empty array means worldwide. `timezoneRestrictions` contains numeric UTC offsets; an empty array means all timezones.
+
+To keep one country's jobs in sync, page through search for that country instead of browsing the whole feed.
+
+## Check whether a job is still open
+
+Use the single-job endpoint before continuing to display a listing. Jobs can close before their `expiryDate`. This lookup is cached for up to about 15 minutes.
+
+```
+GET https://himalayas.app/jobs/api/companies/{company}/jobs/{slug}
+```
+
+Use the company and job slug from the job's Himalayas URL.
+
+| Status | Meaning | Action |
+| --- | --- | --- |
+| `200` | Open; response contains `{ job }` | Keep the listing |
+| `404` | Job not found | Check the company and slug |
+| `410` | Closed; body includes `expiryDate` | Remove the listing |
 
 ## Response schema
 
-**Envelope**
+The **response envelope** is the outer JSON object containing the jobs and pagination information.
 
 | Field | Type | Description |
 | --- | --- | --- |
-| `comments` | string | Human-readable changelog note about the current API version |
-| `updatedAt` | number | Unix timestamp (seconds) of the last data refresh |
+| `comments` | string | Human-readable changelog note |
+| `updatedAt` | number | Unix timestamp (seconds) of the most recently updated job in the response |
 | `offset` | number | Offset applied to this response |
-| `limit` | number | Number of jobs in this response |
-| `totalCount` | number | Total jobs matching the request |
+| `limit` | number | The limit used in this request |
+| `nextCursor` | string | Browse cursor for the following page; absent at the end |
+| `totalCount` | number | Estimated total jobs matching the request |
 | `jobs` | array | Array of job objects |
 
 **Job object**
@@ -143,69 +208,70 @@ Always filter with the `companySlug` value returned in a response, passed back a
 | `title` | string | Job title |
 | `excerpt` | string | First few sentences of the description |
 | `companyName` | string | Hiring company name |
-| `companySlug` | string | Canonical company slug — use this for the `company` filter |
-| `companyLogo` | string | URL of the company logo |
+| `companySlug` | string | Canonical company slug for the `company` filter |
+| `companyLogo` | string | URL of the company logo, or an empty string when there is none |
 | `employmentType` | string | `Full Time`, `Part Time`, `Contractor`, `Temporary`, `Intern`, `Volunteer`, `Other` |
 | `minSalary` | number \| null | Minimum salary, in `salaryPeriod` units |
 | `maxSalary` | number \| null | Maximum salary, in `salaryPeriod` units |
 | `salaryPeriod` | string | `hourly`, `weekly`, `fortnightly`, `monthly`, `annual` (default) |
-| `currency` | string \| null | Currency code, e.g. `USD`, `EUR`, `GBP` |
-| `seniority` | string[] | Seniority levels for the role |
-| `locationRestrictions` | string[] | Countries the candidate must be located in |
-| `timezoneRestrictions` | number[] | UTC offsets the candidate must be within |
+| `currency` | string \| null | Currency code |
+| `seniority` | string[] | Seniority levels |
+| `locationRestrictions` | string[] | Country names where applicants must be based; empty means worldwide |
+| `timezoneRestrictions` | number[] | Accepted UTC offsets; empty means all timezones |
 | `categories` | string[] | Job categories |
-| `parentCategories` | string[] | Top-level job categories, e.g. `Developer`, `Sales` |
-| `description` | string | Full job description as HTML |
-| `pubDate` | number | Unix timestamp (seconds) the job was published |
-| `expiryDate` | number | Unix timestamp (seconds) the job expires |
-| `applicationLink` | string | URL to apply |
-| `guid` | string | Stable unique identifier for the job |
+| `parentCategories` | string[] | Top-level job categories |
+| `description` | string | Full description as HTML |
+| `pubDate` | number | Unix timestamp (seconds) when the job was last updated |
+| `expiryDate` | number | Unix timestamp (seconds): the latest the job stays listed. Jobs can close earlier |
+| `applicationLink` | string | Job page on Himalayas; use for every Apply action |
+| `guid` | string | Stable unique job identifier |
 
-> **Salary note:** since 2026-06-08, `minSalary`/`maxSalary` are expressed in the stated `salaryPeriod` and are **not** normalized to annual. Read `salaryPeriod` before comparing salaries. Listings with no explicit period report `annual`.
-
----
+> **Salary note:** since 2026-06-08, `minSalary`/`maxSalary` use the stated `salaryPeriod` and are **not** normalized to annual. Read `salaryPeriod` before comparing salaries. Listings with no explicit period report `annual`.
 
 ## Example response
 
-```jsonc
+The job, logo URL, timestamps and cursor are illustrative placeholders. `totalCount` is rounded.
+
+```json
 {
-  "comments": "13/03/2026: The API has been updated to include the companySlug field in the response.",
+  "comments": "21/08/2026: Cursor pagination is now available and is the preferred way to page through the feed.",
   "updatedAt": 1785983902,
   "offset": 0,
   "limit": 1,
-  "totalCount": 95666,
+  "nextCursor": "EXAMPLE_CURSOR_USE_THE_VALUE_FROM_YOUR_RESPONSE",
+  "totalCount": 120000,
   "jobs": [
     {
       "title": "Senior React Native Developer",
-      "excerpt": "Are you a talented Senior Developer looking for a remote job…",
-      "companyName": "lemon.io",
-      "companySlug": "lemon-io",
-      "companyLogo": "https://cdn-images.himalayas.app/hcc9f71g0twhi03ly6463ehgjpeb",
+      "excerpt": "Example remote developer listing.",
+      "companyName": "Example Company",
+      "companySlug": "example-company",
+      "companyLogo": "https://example.com/logo.png",
       "employmentType": "Full Time",
       "minSalary": null,
       "maxSalary": null,
       "salaryPeriod": "annual",
       "seniority": ["Senior"],
       "currency": "USD",
-      "locationRestrictions": ["Argentina", "Australia", "Austria"],
-      "timezoneRestrictions": [-8, -7, -6, -5, 0, 1, 2],
+      "locationRestrictions": ["Brazil"],
+      "timezoneRestrictions": [-5],
       "categories": ["Senior-React-Native-Developer", "React-Native-Developer"],
       "parentCategories": ["Developer"],
-      "description": "<p>Are you a talented Senior Developer…</p>",
+      "description": "<p>Example remote developer listing.</p>",
       "pubDate": 1785983902,
       "expiryDate": 1791167901,
-      "applicationLink": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer",
-      "guid": "https://himalayas.app/companies/lemon-io/jobs/senior-react-native-developer"
+      "applicationLink": "https://himalayas.app/companies/example-company/jobs/example-job?utm_source=api",
+      "guid": "https://himalayas.app/companies/example-company/jobs/example-job"
     }
   ]
 }
 ```
 
----
+Pass `applicationLink` through unchanged, including `?utm_source=api`. Deduplicate on `guid`.
 
 ## Code examples
 
-Runnable scripts live in [`examples/`](examples). Each one fetches jobs and prints a summary.
+Runnable scripts live in [`examples/`](examples).
 
 | Language | File | Run |
 | --- | --- | --- |
@@ -220,217 +286,217 @@ Runnable scripts live in [`examples/`](examples). Each one fetches jobs and prin
 ### Python
 
 ```python
+import os
 import requests
 
+key = os.getenv("HIMALAYAS_API_KEY")
+headers = {"Authorization": f"Bearer {key}"} if key else {}
 response = requests.get(
     "https://himalayas.app/jobs/api",
-    params={"limit": 20, "offset": 0},
+    params={"limit": 20},
+    headers=headers,
     timeout=30,
 )
 response.raise_for_status()
 data = response.json()
-
-print(f"{data['totalCount']} remote jobs available")
 for job in data["jobs"]:
-    print(f"{job['title']} — {job['companyName']}")
+    print(f"{job['title']} at {job['companyName']}")
+
+# Pass data["nextCursor"] as cursor for the next page, if present.
 ```
 
 ### Node.js
 
 ```js
-const url = new URL('https://himalayas.app/jobs/api');
-url.searchParams.set('limit', '20');
-url.searchParams.set('offset', '0');
-
-const response = await fetch(url);
+const key = process.env.HIMALAYAS_API_KEY;
+const headers = key ? { Authorization: `Bearer ${key}` } : {};
+const response = await fetch(
+  'https://himalayas.app/jobs/api?limit=20', { headers }
+);
 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 const data = await response.json();
-
-console.log(`${data.totalCount} remote jobs available`);
 for (const job of data.jobs) {
-  console.log(`${job.title} — ${job.companyName}`);
+  console.log(`${job.title} at ${job.companyName}`);
 }
-```
 
----
+// Pass data.nextCursor as cursor for the next page, if present.
+```
 
 ## Paginating the full feed
 
-`limit` is capped at 20, so a full sync is a loop over `offset`. Respect the rate limit — the data only changes once a day, so a small delay between pages is plenty.
+Walk the feed by passing each response's `nextCursor` back as `cursor`, stopping when `nextCursor` is absent.
+
+At 20 jobs per request, walking over 100,000 jobs takes thousands of requests. Use a free key and pace requests within your account's limits. Responses served from the API's cache don't count toward limits.
 
 ```python
+import os
 import time
 import requests
 
-def fetch_all_jobs(page_size=20, delay=1.0):
-    jobs, offset, total = [], 0, None
-    while total is None or offset < total:
+def fetch_all_jobs(page_size=20, delay=1.1):
+    key = os.getenv("HIMALAYAS_API_KEY")
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
+    jobs, cursor = [], None
+
+    while True:
+        params = {"limit": page_size}
+        if cursor:
+            params["cursor"] = cursor
+
         response = requests.get(
             "https://himalayas.app/jobs/api",
-            params={"limit": page_size, "offset": offset},
+            params=params,
+            headers=headers,
             timeout=30,
         )
+        if response.status_code == 429:
+            time.sleep(float(response.headers.get("Retry-After", "60")))
+            continue
+
         response.raise_for_status()
         data = response.json()
-        total = data["totalCount"]
         jobs.extend(data["jobs"])
-        offset += page_size
+        cursor = data.get("nextCursor")
+        if not cursor:
+            return jobs
         time.sleep(delay)
-    return jobs
 ```
 
-Deduplicate on `guid`, which is stable across refreshes.
-
----
+Deduplicate on `guid`. A job updated during a walk moves ahead of your position and won't appear in the remaining pages, so re-walk periodically.
 
 ## Rate limits and caching
 
-The API is rate limited to keep it fast and available for everyone. Exceeding the limit returns `429 Too Many Requests`.
+Keyless requests share one public allowance. Free keys allow 60 requests per minute and 10,000 per UTC day per account, shared across its keys; request limits can change.
 
-Job data is **cached and refreshed every 24 hours**, so polling more often than once per day gains you nothing. Sync once daily, store the results, and serve from your own cache.
+Exceeding a limit returns `429`. With a key, `Retry-After` gives the seconds to wait. If absent, use a fallback delay, as the Python example does.
 
-Need a higher limit for a specific use case? Email [hi@himalayas.app](mailto:hi@himalayas.app) and tell us what you're building.
+Updates usually appear within an hour or two: search responses are cached for up to an hour and browse responses for two hours. A rarely requested query can return an older copy while it refreshes. Cache results in your own storage.
 
-For real-time results instead of a 24-hour cache, use the [MCP server](https://himalayas.app/mcp).
-
----
+Keys grant only `jobs:read`. Keep them on your server. For higher limits, email [hi@himalayas.app](mailto:hi@himalayas.app) with a link to where you show the jobs.
 
 ## CORS: call this from your server, not the browser
 
-The API does **not** send `Access-Control-Allow-Origin` headers, so a `fetch()` straight from browser JavaScript will be blocked by the browser's same-origin policy.
+CORS (Cross-Origin Resource Sharing) controls whether browser code can read responses from another origin. The API doesn't send `Access-Control-Allow-Origin` headers, so direct browser `fetch()` calls are blocked.
 
-Call the API from your backend, a serverless function, or a build step, and serve the results to your frontend from your own origin. This is also better practice — it lets you cache the daily-refreshed data instead of hitting the rate limit from every visitor's browser.
+Call from your backend, a serverless function, or a build step. Serve cached results to your frontend from your own origin.
 
-If you just want live job listings on a web page with no backend, use the [embeddable widget](https://himalayas.app/free-remote-jobs-widget) instead — one line of HTML, no CORS involved.
-
----
+For listings without a backend, the [embeddable widget](https://himalayas.app/free-remote-jobs-widget) takes one line of code. It has no country filter.
 
 ## Errors
 
 | Status | Meaning | What to do |
 | --- | --- | --- |
-| `200` | Success | — |
-| `400` | Bad Request — invalid query parameter | Check parameter names, enum values, and types |
-| `429` | Too Many Requests — rate limit exceeded | Back off and retry later; the data refreshes daily |
-
----
-
-## npm packages
-
-Official packages, in [`packages/`](packages):
-
-| Package | What it is |
-| --- | --- |
-| [`@himalayas/api`](packages/api) | Typed TypeScript client with no dependencies: `search`, `browse`, `browseAll` (follows the cursor for you) and `getJob` (open, closed or not found) |
-| [`@himalayas/cli`](packages/cli) | The `himalayas` command: search remote jobs from your terminal, check a job is still open, and print MCP setup for your AI app |
-| [`@himalayas/mcp`](packages/mcp) | The Himalayas MCP server as a local stdio server, for AI apps that can't connect to remote servers |
-
-```bash
-npm install @himalayas/api
-npx @himalayas/cli search react --country BR
-```
-
-```ts
-import { Himalayas } from '@himalayas/api';
-
-const { jobs } = await new Himalayas().search({ q: 'React', country: 'BR' });
-```
-
-To build them from this repo: `npm install && npm run build`.
-
----
+| `200` | Success | Read the response |
+| `400` | Invalid query parameter | Check names, values and types |
+| `401` | Invalid, revoked, suspended or unverified credentials | Check your key and account |
+| `404` | Single-job lookup: not found | Check company and job slug |
+| `410` | Single-job lookup: closed | Remove it; body includes `expiryDate` |
+| `429` | Rate limit exceeded | Wait for `Retry-After`, or use a fallback delay |
+| `503` | Service unavailable | Retry later |
 
 ## OpenAPI and generated clients
 
-The API is described by an OpenAPI 3.1 spec, included in this repo and hosted at `https://himalayas.app/docs/openapi.json`.
+The [OpenAPI 3.1 spec](https://himalayas.app/docs/openapi.json) is a machine-readable description of the API. It imports into Postman and supports generated clients. For TypeScript, we recommend `@himalayas/api`.
 
-Generate a typed client in any language:
+The hosted spec currently types `locationRestrictions` items as objects and `timezoneRestrictions` items as strings, while live responses return country-name strings and numbers. Override those two item types before generating a client. Save the corrected spec as `openapi.json`, then run:
 
 ```bash
 # TypeScript
-npx @hey-api/openapi-ts -i https://himalayas.app/docs/openapi.json -o src/himalayas
+npx @hey-api/openapi-ts -i ./openapi.json -o src/himalayas
 
-# Python, Go, Java, C#, and 50+ others
+# Python
 openapi-generator-cli generate \
-  -i https://himalayas.app/docs/openapi.json \
+  -i ./openapi.json \
   -g python \
   -o ./himalayas-client
 ```
 
-You can also fork the [Postman collection](https://himalayas.app/api) to explore the endpoints interactively.
-
----
-
 ## Other ways to access the data
 
-| Method | Best for | Freshness |
-| --- | --- | --- |
-| **JSON API** (this repo) | Apps, databases, dashboards, backfilling a job board | Every 24 hours |
-| **[RSS feed](https://github.com/Himalayas-App/remote-jobs-rss-feed)** | Feed readers, monitoring, Zapier/IFTTT automations | Every 24 hours, latest 100 jobs |
-| **[MCP server](https://github.com/Himalayas-App/himalayas-mcp)** | AI assistants — Claude, ChatGPT, Cursor, Windsurf | Real time |
-| **[Embeddable widget](https://himalayas.app/free-remote-jobs-widget)** | Live listings on a web page, no backend | Live |
-
----
+| Method | Best for |
+| --- | --- |
+| **JSON API** | Apps and job boards needing pagination and filtering; updates usually appear within an hour or two |
+| **[RSS feed](https://github.com/Himalayas-App/remote-jobs-rss-feed)** | Feed readers; the latest jobs in RSS 2.0 XML, regenerated daily |
+| **[MCP server](https://github.com/Himalayas-App/himalayas-mcp)** | AI assistants searching jobs and using company, salary and application tools |
+| **[Embeddable widget](https://himalayas.app/free-remote-jobs-widget)** | Listings on a website without a backend; no country filter |
 
 ## Attribution and terms of use
 
-The API is free to use, including commercially. In return we ask that you:
+Follow the [API terms](https://himalayas.app/terms#api):
 
-- **Link back** to the job's URL on [himalayas.app](https://himalayas.app) — use the `applicationLink` or `guid` field.
-- **Credit Himalayas** as the source of the data wherever you display it.
-- **Do not resubmit** Himalayas listings to third-party job aggregators, including but not limited to Jooble, Neuvoo, Google Jobs, and LinkedIn Jobs.
+- **Use `applicationLink` for every Apply action.** It points to the job's page on Himalayas, so Apply clicks open Himalayas.
+- **Credit Himalayas visibly**, with a link to the Himalayas job or [himalayas.app](https://himalayas.app).
+- **Show jobs only on sites and apps you operate.** Don't pass them to third parties, including other job boards, aggregators, job search engines, Google Jobs or LinkedIn Jobs, through feeds or `JobPosting` structured data.
+- **Cache data, stay within request limits, and remove expired jobs.**
+- **Keep keys private** and use them only from your own servers.
 
-The example code in this repository is MIT licensed — see [LICENSE](LICENSE). The job data itself is provided under the attribution terms above.
-
----
+The API is free for personal and commercial integrations. You don't need to ask us first.
 
 ## FAQ
 
 ### Is the Himalayas Remote Jobs API free?
 
-Yes. It is free to use, including for commercial projects, subject to the [attribution requirements](#attribution-and-terms-of-use).
+Yes, including commercial use under the [API terms](https://himalayas.app/terms#api). No key is required; an optional free key adds higher limits and usage tracking.
 
 ### Do I need an API key or authentication?
 
-No. There is no API key, sign-up, or OAuth flow. Send a plain `GET` request.
+No key is required. We recommend a [free key](https://himalayas.app/signup/developer) beyond quick tests for higher limits and a daily usage count.
 
 ### How many jobs can I get per request?
 
-Up to 20. Use `offset` on `/jobs/api` or `page` on `/jobs/api/search` to retrieve more. `totalCount` in every response tells you how many jobs match.
+Up to 20. Browse with `cursor` until `nextCursor` is absent; search with `page` until no jobs return.
 
 ### How often is the data updated?
 
-Every 24 hours. For real-time job data, use the [MCP server](https://himalayas.app/mcp).
+Usually within an hour or two. Rarely requested queries can return an older copy while refreshing. Single-job checks are cached for up to about 15 minutes.
 
 ### What is the rate limit?
 
-We don't publish an exact number, and it may change with capacity. Exceeding it returns `429`. Since the data refreshes daily, one full sync per day stays well inside the limit. Email [hi@himalayas.app](mailto:hi@himalayas.app) if you need more.
+Keyed accounts get 60 requests per minute and 10,000 per UTC day. Keyless callers share an allowance. On `429`, keyed responses provide `Retry-After`; otherwise use a fallback delay.
+
+### What can I filter on?
+
+Keyword, candidate country, worldwide availability, seniority, employment type, company and timezone. Sorting includes salary. The single-job check returns `410` for closed listings.
 
 ### Can I call the API directly from browser JavaScript?
 
-No — the API does not send CORS headers. See [CORS](#cors-call-this-from-your-server-not-the-browser) for the alternatives.
+No. See [CORS](#cors-call-this-from-your-server-not-the-browser) for server-side alternatives.
 
 ### How do I filter jobs by company?
 
-Pass the `companySlug` from a response back as the `company` parameter on `/jobs/api/search`, e.g. `?company=linear`. Comma-separate for multiple companies.
+Pass `companySlug` as `company`. Comma-separate multiple companies.
 
 ### How do I get only worldwide-friendly remote jobs?
 
-Use `?worldwide=true` on the search endpoint. To filter to one country while excluding worldwide listings, combine `country` with `exclude_worldwide=true`.
+Use `worldwide=true`. For country results without worldwide matches, combine `country` with `exclude_worldwide=true`.
 
 ### Are salaries normalized to an annual figure?
 
-No. Read `salaryPeriod` — it can be `hourly`, `weekly`, `fortnightly`, `monthly`, or `annual`. Convert before comparing. `minSalary`, `maxSalary`, and `currency` may all be `null` when a listing doesn't disclose pay.
+No. Read `salaryPeriod` before comparing salaries.
+
+### Is there an npm package?
+
+Yes: [`@himalayas/api`](https://www.npmjs.com/package/@himalayas/api), the official typed client.
+
+### Is there a CLI?
+
+Yes: `npx @himalayas/cli search react --country BR`.
+
+### Is there an MCP server?
+
+Yes. Connect to `https://mcp.himalayas.app/mcp`. For stdio, [`@himalayas/mcp`](https://www.npmjs.com/package/@himalayas/mcp) bridges to that hosted server; it isn't an offline server. It requires Node.js 20.18.1 or later:
+
+```json
+{"command":"npx","args":["-y","@himalayas/mcp"]}
+```
 
 ### What is the difference between the API, the RSS feed, and the MCP server?
 
-The API returns the full jobs feed with pagination and filtering. The [RSS feed](https://github.com/Himalayas-App/remote-jobs-rss-feed) returns the 100 most recent jobs as XML for feed readers. The [MCP server](https://github.com/Himalayas-App/himalayas-mcp) gives AI assistants real-time search plus tools for companies, salaries, and applications.
+Use the API for filtered, paginated data; RSS for the latest jobs in a feed reader; MCP for AI assistants calling tools.
 
 ### Can I use the API to backfill my own job board?
 
-Yes — that's one of the main use cases. Link back to the original listing on Himalayas and credit Himalayas as the source.
-
----
+Yes. Follow the [attribution requirements](#attribution-and-terms-of-use), use `applicationLink`, and remove expired jobs.
 
 ## Support
 
@@ -438,4 +504,4 @@ Yes — that's one of the main use cases. Link back to the original listing on H
 - **Issues and questions:** [open an issue](https://github.com/Himalayas-App/remote-jobs-api/issues)
 - **Email:** [hi@himalayas.app](mailto:hi@himalayas.app)
 
-Built by [Himalayas](https://himalayas.app) — the remote job board with 95,000+ open remote jobs.
+Built by [Himalayas](https://himalayas.app), the remote job board with over 100,000 open remote jobs.
