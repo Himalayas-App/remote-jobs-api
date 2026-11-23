@@ -1,5 +1,6 @@
-# Publishes one package to npm with trusted publishing (OIDC, no npm token).
-# Run from main after the version bump is merged. Publish api before cli.
+# Stages one package on npm with trusted publishing (OIDC, no npm token).
+# A maintainer then approves the staged version on npm with 2FA to release it.
+# Run from main after the version bump is merged. Release api before cli.
 name: Publish to npm
 
 on:
@@ -58,4 +59,4 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: npm publish ./*.tgz --access public --provenance --ignore-scripts
+      - run: npm stage publish ./*.tgz --access public --provenance --ignore-scripts
