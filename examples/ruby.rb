@@ -1,43 +1,57 @@
-# Himalayas Remote Jobs API — Ruby example.
+# Himalayas Remote Jobs API: Ruby example.
 #
 # Docs: https://himalayas.app/docs/remote-jobs-api
+#
+# No API key needed; set HIMALAYAS_API_KEY to use a free key for higher limits (https://himalayas.app/signup/developer).
 #
 # Usage:
 #   ruby examples/ruby.rb
 #
-# Uses only the standard library. No API key or authentication is required.
+# Uses only the standard library.
 
 require 'json'
 require 'net/http'
 require 'uri'
 
 BASE_URL = 'https://himalayas.app'.freeze
+MAX_TRIES = 3
 
 # Fetch a page of the full remote jobs feed. `limit` is capped at 20.
-def browse_jobs(limit: 20, offset: 0)
-  himalayas_request('/jobs/api', limit: limit, offset: offset)
+# Pass the previous response's `nextCursor` as `cursor`; stop when it is absent.
+def browse_jobs(limit: 20, cursor: nil)
+  himalayas_request('/jobs/api', limit: limit, cursor: cursor)
 end
 
 # Search remote jobs.
-# Filters: q, country, worldwide, exclude_worldwide, seniority,
-# employment_type, company, timezone, sort, page.
+# Filters: q, country (one per request), worldwide, exclude_worldwide,
+# seniority, employment_type, company, timezone, sort, page.
+# To page, increase `page` until a page returns no jobs; dedupe on `guid`.
 def search_jobs(**filters)
   himalayas_request('/jobs/api/search', **filters)
 end
 
+# GET a JSON endpoint. On 429, wait Retry-After seconds (60 if absent) and retry.
 def himalayas_request(path, **query)
   uri = URI("#{BASE_URL}#{path}")
   uri.query = URI.encode_www_form(query.compact)
+  headers = {}
+  key = ENV.fetch('HIMALAYAS_API_KEY', '')
+  headers['Authorization'] = "Bearer #{key}" unless key.empty?
 
-  response = Net::HTTP.get_response(uri)
+  (1..MAX_TRIES).each do |attempt|
+    response = Net::HTTP.get_response(uri, headers)
 
-  raise 'Rate limited. The feed refreshes every 24h — back off and retry.' if response.code == '429'
-  raise "HTTP #{response.code} for #{uri}" unless response.is_a?(Net::HTTPSuccess)
+    if response.code == '429' && attempt < MAX_TRIES
+      sleep (response['Retry-After'] || 60).to_i
+      next
+    end
+    raise "HTTP #{response.code} for #{uri}" unless response.is_a?(Net::HTTPSuccess)
 
-  JSON.parse(response.body)
+    return JSON.parse(response.body)
+  end
 end
 
-# Salaries are in `salaryPeriod` units — they are not normalized to annual.
+# Salaries are in `salaryPeriod` units; they are not normalized to annual.
 def format_salary(job)
   return 'salary not disclosed' if job['minSalary'].nil? && job['maxSalary'].nil?
 
@@ -48,18 +62,19 @@ end
 
 puts '==> Newest remote jobs'
 feed = browse_jobs(limit: 5)
-puts "#{feed['totalCount']} remote jobs available\n\n"
+puts "About #{feed['totalCount']} remote jobs available\n\n"
 feed['jobs'].each do |job|
-  puts "  #{job['title']} — #{job['companyName']}"
+  puts "  #{job['title']} at #{job['companyName']}"
   puts "    #{format_salary(job)}"
+  # Use applicationLink unchanged for every Apply action.
   puts "    #{job['applicationLink']}"
 end
 
 puts "\n==> Senior Ruby roles, newest first"
 results = search_jobs(q: 'ruby', seniority: 'Senior', employment_type: 'Full Time', sort: 'recent')
-puts "#{results['totalCount']} matches\n\n"
+puts "About #{results['totalCount']} matches\n\n"
 results['jobs'].first(5).each do |job|
-  puts "  #{job['title']} — #{job['companyName']} (#{job['companySlug']})"
+  puts "  #{job['title']} at #{job['companyName']} (#{job['companySlug']})"
 end
 
 # Filter by company using the canonical `companySlug` from a response,
