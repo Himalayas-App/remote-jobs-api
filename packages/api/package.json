@@ -1,0 +1,19 @@
+{
+  "name": "@himalayas/api",
+  "version": "0.1.0",
+  "description": "Official client for the Himalayas Remote Jobs API: search and browse remote jobs by keyword, country, seniority and time zone",
+  "keywords": ["himalayas", "remote jobs", "jobs api", "job board", "remote work"],
+  "homepage": "https://himalayas.app/docs/remote-jobs-api",
+  "repository": { "type": "git", "url": "git+https://github.com/Himalayas-App/remote-jobs-api.git", "directory": "packages/api" },
+  "bugs": "https://github.com/Himalayas-App/remote-jobs-api/issues",
+  "license": "MIT",
+  "author": "Himalayas (https://himalayas.app)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "scripts": { "build": "tsc -p tsconfig.json", "prepack": "npm run build" },
+  "publishConfig": { "access": "public" }
+}

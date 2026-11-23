@@ -1,0 +1,18 @@
+{
+  "name": "@himalayas/cli",
+  "version": "0.1.0",
+  "description": "Search remote jobs on Himalayas from your terminal, and set up the Himalayas MCP server in AI apps",
+  "keywords": ["himalayas", "remote jobs", "cli", "job search", "mcp"],
+  "homepage": "https://himalayas.app/docs/remote-jobs-api",
+  "repository": { "type": "git", "url": "git+https://github.com/Himalayas-App/remote-jobs-api.git", "directory": "packages/cli" },
+  "bugs": "https://github.com/Himalayas-App/remote-jobs-api/issues",
+  "license": "MIT",
+  "author": "Himalayas (https://himalayas.app)",
+  "type": "module",
+  "bin": { "himalayas": "dist/index.js" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "engines": { "node": ">=18" },
+  "scripts": { "build": "tsc -p tsconfig.json && chmod +x dist/index.js", "prepack": "npm run build" },
+  "dependencies": { "@himalayas/api": "^0.1.0" },
+  "publishConfig": { "access": "public" }
+}

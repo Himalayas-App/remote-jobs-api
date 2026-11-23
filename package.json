@@ -1,0 +1,20 @@
+{
+  "name": "remote-jobs-api",
+  "private": true,
+  "description": "Himalayas Remote Jobs API: OpenAPI spec, examples and the official npm packages",
+  "workspaces": [
+    "packages/api",
+    "packages/cli",
+    "packages/mcp"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
