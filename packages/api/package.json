@@ -1,6 +1,6 @@
 {
   "name": "@himalayas/api",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Official TypeScript client for the free Himalayas Remote Jobs API: search and browse over 100,000 remote jobs by keyword, country, seniority and time zone. No key needed.",
   "keywords": ["himalayas", "remote jobs", "remote jobs api", "jobs api", "job search api", "job board api", "job listings", "job board", "free api", "job feed", "remote work", "typescript", "api client", "sdk"],
   "homepage": "https://himalayas.app/docs/remote-jobs-api",

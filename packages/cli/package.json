@@ -1,6 +1,6 @@
 {
   "name": "@himalayas/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Search remote jobs on Himalayas from your terminal, check a job is still open, and set up the Himalayas MCP server in Claude, ChatGPT, Cursor and other AI apps",
   "keywords": ["himalayas", "remote jobs", "job search", "cli", "terminal", "command line", "jobs api", "job board", "remote work", "mcp", "claude", "cursor"],
   "homepage": "https://himalayas.app/docs/remote-jobs-api",
@@ -13,6 +13,6 @@
   "files": ["dist", "README.md", "LICENSE"],
   "engines": { "node": ">=18" },
   "scripts": { "build": "tsc -p tsconfig.json && chmod +x dist/index.js", "prepack": "npm run build" },
-  "dependencies": { "@himalayas/api": "^0.1.1" },
+  "dependencies": { "@himalayas/api": "^0.1.2" },
   "publishConfig": { "access": "public" }
 }

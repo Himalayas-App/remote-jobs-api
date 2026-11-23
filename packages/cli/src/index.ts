@@ -2,7 +2,7 @@
 import { parseArgs } from 'node:util';
 import { Himalayas, HimalayasError, type Job, type SearchParams, type SortOrder } from '@himalayas/api';
 
-const VERSION = '0.1.1';
+const VERSION = '0.1.2';
 const MCP_URL = 'https://mcp.himalayas.app/mcp';
 
 const HELP = `himalayas ${VERSION}: search remote jobs on Himalayas from your terminal
