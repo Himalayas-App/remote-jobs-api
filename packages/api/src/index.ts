@@ -4,7 +4,7 @@
  * OpenAPI: https://himalayas.app/docs/openapi.json
  */
 
-export const VERSION = '0.1.0';
+export const VERSION = '0.1.1';
 
 export type EmploymentType =
   | 'Full Time'

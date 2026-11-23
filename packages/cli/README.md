@@ -19,6 +19,6 @@ himalayas search "product designer" --country GB --country-only --seniority Seni
 
 `--country` takes a two-letter code or a country name and includes jobs open worldwide; add `--country-only` to leave those out. `--json` prints the raw API response, for piping into `jq`.
 
-Set `HIMALAYAS_API_KEY` to use a [free API key](https://himalayas.app/signup/developer) for higher rate limits.
+No key needed. Set `HIMALAYAS_API_KEY` to use a [free API key](https://himalayas.app/signup/developer): 60 requests a minute and 10,000 a day of your own.
 
 Built on [`@himalayas/api`](https://www.npmjs.com/package/@himalayas/api). Docs: [Remote Jobs API](https://himalayas.app/docs/remote-jobs-api). MIT licensed.

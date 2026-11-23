@@ -1,8 +1,8 @@
 {
   "name": "@himalayas/api",
-  "version": "0.1.0",
-  "description": "Official client for the Himalayas Remote Jobs API: search and browse remote jobs by keyword, country, seniority and time zone",
-  "keywords": ["himalayas", "remote jobs", "jobs api", "job board", "remote work"],
+  "version": "0.1.1",
+  "description": "Official TypeScript client for the free Himalayas Remote Jobs API: search and browse over 100,000 remote jobs by keyword, country, seniority and time zone. No key needed.",
+  "keywords": ["himalayas", "remote jobs", "remote jobs api", "jobs api", "job search api", "job board api", "job listings", "job board", "free api", "job feed", "remote work", "typescript", "api client", "sdk"],
   "homepage": "https://himalayas.app/docs/remote-jobs-api",
   "repository": { "type": "git", "url": "git+https://github.com/Himalayas-App/remote-jobs-api.git", "directory": "packages/api" },
   "bugs": "https://github.com/Himalayas-App/remote-jobs-api/issues",
