@@ -1,6 +1,6 @@
 {
   "name": "@himalayas/mcp",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Local stdio bridge to the hosted Himalayas MCP server (remote jobs, salaries, companies) for AI apps that only start local MCP servers",
   "keywords": ["himalayas", "mcp", "mcp server", "model context protocol", "stdio", "remote jobs", "job search", "salaries", "ai agents", "claude", "cursor", "mcp-remote"],
   "homepage": "https://himalayas.app/docs/remote-jobs-mcp",
